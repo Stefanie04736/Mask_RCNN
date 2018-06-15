@@ -1209,6 +1209,16 @@ def load_image_gt(dataset, config, image_id, augment=False, augmentation=None,
     image = dataset.load_image(image_id)
     mask, class_ids = dataset.load_mask(image_id)
     original_shape = image.shape
+    
+    '''
+    # crop 1/n of image along axis = 1
+    n = 3
+    z = np.random.choice(n)
+    w = original_shape[1] / n
+    image = image[:, int(z*w+1):int((z+1)*w+1), :]
+    mask = mask[:, int(z*w+1):int((z+1)*w+1), :]
+    '''
+    
     image, window, scale, padding, crop = utils.resize_image(
         image,
         min_dim=config.IMAGE_MIN_DIM,
@@ -1235,7 +1245,7 @@ def load_image_gt(dataset, config, image_id, augment=False, augmentation=None,
         # test your augmentation on masks
         MASK_AUGMENTERS = ["Sequential", "SomeOf", "OneOf", "Sometimes",
                            "Fliplr", "Flipud", "CropAndPad",
-                           "Affine", "PiecewiseAffine"]
+                           "Affine", "PiecewiseAffine", "Crop"]
 
         def hook(images, augmenter, parents, default):
             """Determines which augmenters to apply to masks."""
@@ -2140,7 +2150,7 @@ class MaskRCNN():
             if layer.output in self.keras_model.losses:
                 continue
             loss = (
-                tf.reduce_mean(layer.output, keepdims=True)
+                tf.reduce_mean(layer.output, keep_dims=True)
                 * self.config.LOSS_WEIGHTS.get(name, 1.))
             self.keras_model.add_loss(loss)
 
@@ -2164,7 +2174,7 @@ class MaskRCNN():
             layer = self.keras_model.get_layer(name)
             self.keras_model.metrics_names.append(name)
             loss = (
-                tf.reduce_mean(layer.output, keepdims=True)
+                tf.reduce_mean(layer.output, keep_dims=True)
                 * self.config.LOSS_WEIGHTS.get(name, 1.))
             self.keras_model.metrics_tensors.append(loss)
 
@@ -2325,7 +2335,7 @@ class MaskRCNN():
             validation_steps=self.config.VALIDATION_STEPS,
             max_queue_size=100,
             workers=workers,
-            use_multiprocessing=True,
+            use_multiprocessing=False,
         )
         self.epoch = max(self.epoch, epochs)
 
